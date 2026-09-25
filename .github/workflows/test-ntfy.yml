@@ -1,0 +1,22 @@
+name: Test Ntfy Workflow
+
+on:
+  workflow_dispatch: # Permet de lancer ce test manuellement depuis l'onglet Actions de GitHub
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Récupération du code
+        uses: actions/checkout@v4
+
+      - name: ⬡ Installation de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Installation des dépendances (axios)
+        run: npm install axios
+
+      - name: 🚀 Lancement du test de notification
+        run: node test-ntfy.js
