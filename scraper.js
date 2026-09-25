@@ -114,7 +114,7 @@ async function checkDoctolib() {
 
     // Si on est dans les 10 premières minutes de l'heure cible (8h, 12h, 16h, 20h) 
     // et que le cron tourne toutes les 15 min, le run le plus proche de l'heure pile va valider cette condition.
-    const isScheduledReportHour = [8, 12, 16, 20].includes(hours) && minutes <= 10;
+    const isScheduledReportHour = [8, 12, 13, 16, 20].includes(hours) && minutes <= 10;
     
     if (isScheduledReportHour && !agendaOpen) {
         console.log(`📡 Envoi du rapport de statut programmé de ${hours}h (heure de Paris)...`);
