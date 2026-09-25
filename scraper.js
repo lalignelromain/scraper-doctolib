@@ -112,6 +112,10 @@ async function checkDoctolib() {
     const hours = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }), 10);
     const minutes = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', minute: 'numeric' }), 10);
 
+    // DEBUG : Affichons ce que le script perçoit comme heure française
+    console.log(`🕒 Heure évaluée (Paris) : ${hours}h${minutes < 10 ? '0' : ''}${minutes}`);
+
+    const isScheduledReportHour = [8, 12, 13, 16, 20].includes(hours) && minutes <= 10;
     // Si on est dans les 10 premières minutes de l'heure cible (8h, 12h, 16h, 20h) 
     // et que le cron tourne toutes les 15 min, le run le plus proche de l'heure pile va valider cette condition.
     const isScheduledReportHour = [8, 12, 13, 16, 20].includes(hours) && minutes <= 10;
