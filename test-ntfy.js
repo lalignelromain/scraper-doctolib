@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const NTFY_TOPIC = 'stock_jouets_romain';
+const NTFY_TOPIC = 'cotten-rdv-veille';
 
 async function sendTestNotification() {
     console.log(`🚀 Envoi d'une notification de test vers ntfy.sh/${NTFY_TOPIC}...`);
