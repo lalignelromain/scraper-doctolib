@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const axios = require('axios');
 
 const DOCTOLIB_URL = 'https://www.doctolib.fr/dermatologue/val-de-briey/caroline-cotten';
-const NTFY_TOPIC = 'stock_jouets_romain';
+const NTFY_TOPIC = 'cotten-rdv-veille';
 
 async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨", priority = "urgent", tags = "hospital,rotating_light") {
     try {
