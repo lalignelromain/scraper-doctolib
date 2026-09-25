@@ -49,7 +49,15 @@ async function checkDoctolib() {
         
         await appointmentBtn.waitFor({ state: 'attached', timeout: 15000 });
 
-        const isDisabled = await appointmentBtn.evaluate(el => el.classList.contains('Tappable-inactive') || el.hasAttribute('disabled'));
+        const isDisabled = await appointmentBtn.evaluate(el => {
+            if (el.classList.contains('Tappable-inactive')) {
+                return true;
+            }
+            if (el.hasAttribute('disabled')) {
+                return true;
+            }
+            return false;
+        });
 
         if (isDisabled) {
             console.log("🔒 Agenda fermé : Le bouton 'Prendre rendez-vous' est inactif/grisé.");
@@ -104,13 +112,12 @@ async function checkDoctolib() {
     const hours = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }), 10);
     const minutes = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', minute: 'numeric' }), 10);
 
-    // Si on est dans la tranche des minutes du premier run de l'heure (ex: entre 00 et 10 min) 
-    // et que l'heure correspond à 8, 12, 16 ou 20 heures : on envoie un statut de vie.
+    // Si on est dans les 10 premières minutes de l'heure cible (8h, 12h, 16h, 20h) 
+    // et que le cron tourne toutes les 15 min, le run le plus proche de l'heure pile va valider cette condition.
     const isScheduledReportHour = [8, 12, 16, 20].includes(hours) && minutes <= 10;
     
-    // Si l'utilisateur a lancé manuellement ou si c'est l'heure du rapport planifié (et qu'on n'a pas déjà envoyé l'alerte critique)
     if (isScheduledReportHour && !agendaOpen) {
-        console.log(`📡 Envoi du rapport de statut programmé de ${hours}h...`);
+        console.log(`📡 Envoi du rapport de statut programmé de ${hours}h (heure de Paris)...`);
         await sendNtfyAlert(
             `🟢 Veille active : Le script tourne correctement. L'agenda du Dr. Cotten est toujours fermé pour le moment.`,
             `Status Check (${hours}h) - Dr. Cotten`,
