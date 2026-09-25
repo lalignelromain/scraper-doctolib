@@ -106,22 +106,18 @@ async function checkDoctolib() {
         console.log("🔒 Navigateur fermé.");
     }
 
-    // --- GESTION DES STATUTS / HEARTBEAT (8h, 12h, 16h, 20h) ---
-    // Récupération de l'heure actuelle en France (CET/CEST)
+    // --- GESTION DES STATUTS / HEARTBEAT ---
     const now = new Date();
     const hours = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }), 10);
     const minutes = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', minute: 'numeric' }), 10);
 
-    // DEBUG : Affichons ce que le script perçoit comme heure française
+    // DEBUG : Affichage de l'heure perçue par le script
     console.log(`🕒 Heure évaluée (Paris) : ${hours}h${minutes < 10 ? '0' : ''}${minutes}`);
 
     const isScheduledReportHour = [8, 12, 13, 16, 20].includes(hours) && minutes <= 10;
-    // Si on est dans les 10 premières minutes de l'heure cible (8h, 12h, 16h, 20h) 
-    // et que le cron tourne toutes les 15 min, le run le plus proche de l'heure pile va valider cette condition.
-    const isScheduledReportHour = [8, 12, 13, 16, 20].includes(hours) && minutes <= 10;
     
     if (isScheduledReportHour && !agendaOpen) {
-        console.log(`📡 Envoi du rapport de statut programmé de ${hours}h (heure de Paris)...`);
+        console.log(`📡 Envoi du rapport de statut programmé de ${hours}h...`);
         await sendNtfyAlert(
             `🟢 Veille active : Le script tourne correctement. L'agenda du Dr. Cotten est toujours fermé pour le moment.`,
             `Status Check (${hours}h) - Dr. Cotten`,
