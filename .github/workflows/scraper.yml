@@ -1,0 +1,27 @@
+name: Doctolib Scraper
+
+on:
+  workflow_dispatch: # Permet de le lancer manuellement depuis GitHub
+  schedule:
+    - cron: '*/30 * * * *' # S'exécute toutes les 30 minutes (modifiable plus tard)
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Récupération du code
+        uses: actions/checkout@v4
+
+      - name: ⬡ Installation de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Installation des dépendances
+        run: npm install
+
+      - name: 🎭 Installation des navigateurs Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: 🚀 Lancement du Scraper
+        run: npm start
