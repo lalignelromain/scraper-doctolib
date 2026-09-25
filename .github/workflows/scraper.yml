@@ -1,9 +1,10 @@
-name: Doctolib Scraper
+name: Doctolib Scraper & Heartbeat
 
 on:
-  workflow_dispatch: # Permet de le lancer manuellement depuis GitHub
+  workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *' # S'exécute toutes les 30 minutes (modifiable plus tard)
+    # Exécution toutes les 30 minutes pour le scraping des créneaux
+    - cron: '*/30 * * * *'
 
 jobs:
   run-scraper:
@@ -24,4 +25,6 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: 🚀 Lancement du Scraper
+        env:
+          CRON_EXEC: ${{ github.event_name == 'schedule' }}
         run: npm start
