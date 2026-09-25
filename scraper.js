@@ -4,10 +4,14 @@ const axios = require('axios');
 const DOCTOLIB_URL = 'https://www.doctolib.fr/dermatologue/val-de-briey/caroline-cotten';
 const NTFY_TOPIC = 'stock_jouets_romain';
 
-async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨") {
+async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨", priority = "urgent", tags = "hospital,rotating_light") {
     try {
         await axios.post(`https://ntfy.sh/${NTFY_TOPIC}`, message, {
-            headers: { 'Title': title, 'Priority': 'urgent', 'Tags': 'hospital,rotating_light' }
+            headers: { 
+                'Title': title, 
+                'Priority': priority, 
+                'Tags': tags 
+            }
         });
         console.log("✅ Alerte Ntfy envoyée avec succès !");
     } catch (error) {
@@ -22,6 +26,8 @@ async function checkDoctolib() {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
     const page = await context.newPage();
+
+    let agendaOpen = false;
 
     try {
         console.log(`🌐 Navigation vers : ${DOCTOLIB_URL}`);
@@ -43,51 +49,46 @@ async function checkDoctolib() {
         
         await appointmentBtn.waitFor({ state: 'attached', timeout: 15000 });
 
-        // On vérifie si le bouton est désactivé (cas où l'agenda est fermé)
         const isDisabled = await appointmentBtn.evaluate(el => el.classList.contains('Tappable-inactive') || el.hasAttribute('disabled'));
 
         if (isDisabled) {
             console.log("🔒 Agenda fermé : Le bouton 'Prendre rendez-vous' est inactif/grisé.");
-            return; // On arrête proprement le script ici, tout va bien
-        }
-
-        // Si le bouton est actif, on clique !
-        await appointmentBtn.click({ force: true });
-        console.log("🖱️ Clic effectué sur 'Prendre rendez-vous'.");
-
-        await page.waitForTimeout(3000);
-
-        // Étapes suivantes (Patient / Motif / Agenda)
-        try {
-            const newPatientOption = page.locator('text=Nouveau patient').first();
-            if (await newPatientOption.isVisible({ timeout: 5000 })) {
-                await newPatientOption.click();
-                console.log("🖱️ Sélection de 'Nouveau patient'.");
-                await page.waitForTimeout(2000);
-            }
-        } catch (e) {}
-
-        try {
-            const firstMotive = page.locator('.dl-consultation-motive-list-item, [data-test*="motive"]').first();
-            if (await firstMotive.isVisible({ timeout: 5000 })) {
-                await firstMotive.click();
-                console.log("🖱️ Clic sur le motif de consultation.");
-                await page.waitForTimeout(3000);
-            }
-        } catch (e) {}
-
-        // Vérification finale des créneaux
-        const calendarView = page.locator('.dl-calendar-day, .dl-availability-slot').first();
-        const hasSlots = await calendarView.isVisible({ timeout: 5000 }).catch(() => false);
-
-        if (hasSlots) {
-            console.log("🎉 ALERTE : DES CRÉNEAUX SEMBLENT DISPONIBLES !");
-            await sendNtfyAlert(
-                `L'agenda du Dr. Caroline Cotten est ouvert !\nFonce vite réserver : ${DOCTOLIB_URL}`,
-                "🔥 CRÉNEAU DISPONIBLE DR COTTEN !"
-            );
         } else {
-            console.log("⚠️ Bouton cliqué mais aucun créneau visible pour l'instant.");
+            // Si le bouton est actif, on clique pour creuser
+            await appointmentBtn.click({ force: true });
+            console.log("🖱️ Clic effectué sur 'Prendre rendez-vous'.");
+
+            await page.waitForTimeout(3000);
+
+            try {
+                const newPatientOption = page.locator('text=Nouveau patient').first();
+                if (await newPatientOption.isVisible({ timeout: 5000 })) {
+                    await newPatientOption.click();
+                    await page.waitForTimeout(2000);
+                }
+            } catch (e) {}
+
+            try {
+                const firstMotive = page.locator('.dl-consultation-motive-list-item, [data-test*="motive"]').first();
+                if (await firstMotive.isVisible({ timeout: 5000 })) {
+                    await firstMotive.click();
+                    await page.waitForTimeout(3000);
+                }
+            } catch (e) {}
+
+            const calendarView = page.locator('.dl-calendar-day, .dl-availability-slot').first();
+            const hasSlots = await calendarView.isVisible({ timeout: 5000 }).catch(() => false);
+
+            if (hasSlots) {
+                agendaOpen = true;
+                console.log("🎉 ALERTE : DES CRÉNEAUX SEMBLENT DISPONIBLES !");
+                await sendNtfyAlert(
+                    `L'agenda du Dr. Caroline Cotten est ouvert !\nFonce vite réserver : ${DOCTOLIB_URL}`,
+                    "🔥 CRÉNEAU DISPONIBLE DR COTTEN !",
+                    "urgent",
+                    "hospital,rotating_light"
+                );
+            }
         }
 
     } catch (error) {
@@ -95,6 +96,27 @@ async function checkDoctolib() {
     } finally {
         await browser.close();
         console.log("🔒 Navigateur fermé.");
+    }
+
+    // --- GESTION DES STATUTS / HEARTBEAT (8h, 12h, 16h, 20h) ---
+    // Récupération de l'heure actuelle en France (CET/CEST)
+    const now = new Date();
+    const hours = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }), 10);
+    const minutes = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', minute: 'numeric' }), 10);
+
+    // Si on est dans la tranche des minutes du premier run de l'heure (ex: entre 00 et 10 min) 
+    // et que l'heure correspond à 8, 12, 16 ou 20 heures : on envoie un statut de vie.
+    const isScheduledReportHour = [8, 12, 16, 20].includes(hours) && minutes <= 10;
+    
+    // Si l'utilisateur a lancé manuellement ou si c'est l'heure du rapport planifié (et qu'on n'a pas déjà envoyé l'alerte critique)
+    if (isScheduledReportHour && !agendaOpen) {
+        console.log(`📡 Envoi du rapport de statut programmé de ${hours}h...`);
+        await sendNtfyAlert(
+            `🟢 Veille active : Le script tourne correctement. L'agenda du Dr. Cotten est toujours fermé pour le moment.`,
+            `Status Check (${hours}h) - Dr. Cotten`,
+            "default",
+            "white_check_mark,eyes"
+        );
     }
 }
 
