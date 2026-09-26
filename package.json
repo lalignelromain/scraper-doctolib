@@ -4,7 +4,8 @@
   "description": "Scraper Doctolib Dr Cotten",
   "main": "scraper.js",
   "scripts": {
-    "start": "node scraper.js"
+    "start": "node scraper.js",
+    "postinstall": "npx playwright install --with-deps chromium"
   },
   "dependencies": {
     "axios": "^1.7.9",
