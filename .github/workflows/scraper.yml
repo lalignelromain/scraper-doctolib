@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # Exécution toutes les 15 minutes pour attraper l'heure pile de Paris
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
 
 jobs:
   run-scraper:
