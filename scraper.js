@@ -21,22 +21,32 @@ async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨", prior
 
 async function checkDoctolib() {
     console.log("🚀 Lancement du navigateur de vérification...");
-    const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-    const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    const browser = await chromium.launch({ 
+        headless: true, 
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled'
+        ] 
     });
-    const page = await context.newPage();
 
+    const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 720 },
+        locale: 'fr-FR'
+    });
+
+    const page = await context.newPage();
     let agendaOpen = false;
 
     try {
         console.log(`🌐 Navigation vers : ${DOCTOLIB_URL}`);
         await page.goto(DOCTOLIB_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Cookies
+        // Gestion des cookies
         try {
             const cookieBtn = page.locator('button#didomi-notice-agree-button, text=Accepter et fermer').first();
-            if (await cookieBtn.isVisible({ timeout: 5000 })) {
+            if (await cookieBtn.isVisible({ timeout: 4000 })) {
                 await cookieBtn.click();
                 console.log("🍪 Cookies acceptés.");
             }
@@ -62,30 +72,34 @@ async function checkDoctolib() {
         if (isDisabled) {
             console.log("🔒 Agenda fermé : Le bouton 'Prendre rendez-vous' est inactif/grisé.");
         } else {
-            // Si le bouton est actif, on clique pour creuser
             await appointmentBtn.click({ force: true });
             console.log("🖱️ Clic effectué sur 'Prendre rendez-vous'.");
 
             await page.waitForTimeout(3000);
 
+            // Gestion de l'option nouveau patient si elle s'affiche
             try {
                 const newPatientOption = page.locator('text=Nouveau patient').first();
-                if (await newPatientOption.isVisible({ timeout: 5000 })) {
+                if (await newPatientOption.isVisible({ timeout: 4000 })) {
                     await newPatientOption.click();
+                    console.log("👤 Option 'Nouveau patient' sélectionnée.");
                     await page.waitForTimeout(2000);
                 }
             } catch (e) {}
 
+            // Sélection du premier motif de consultation disponible
             try {
                 const firstMotive = page.locator('.dl-consultation-motive-list-item, [data-test*="motive"]').first();
-                if (await firstMotive.isVisible({ timeout: 5000 })) {
+                if (await firstMotive.isVisible({ timeout: 4000 })) {
                     await firstMotive.click();
+                    console.log("📋 Motif de consultation sélectionné.");
                     await page.waitForTimeout(3000);
                 }
             } catch (e) {}
 
-            const calendarView = page.locator('.dl-calendar-day, .dl-availability-slot').first();
-            const hasSlots = await calendarView.isVisible({ timeout: 5000 }).catch(() => false);
+            // Vérification de la présence effective de créneaux ou du calendrier ouvert
+            const calendarView = page.locator('.dl-calendar-day, .dl-availability-slot, [data-test*="slot"]').first();
+            const hasSlots = await calendarView.isVisible({ timeout: 6000 }).catch(() => false);
 
             if (hasSlots) {
                 agendaOpen = true;
@@ -96,6 +110,8 @@ async function checkDoctolib() {
                     "urgent",
                     "hospital,rotating_light"
                 );
+            } else {
+                console.log("🔍 Bouton cliqué, mais aucun créneau visible dans le calendrier pour l'instant.");
             }
         }
 
@@ -111,7 +127,6 @@ async function checkDoctolib() {
     const hours = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }), 10);
     const minutes = parseInt(now.toLocaleString('en-US', { timeZone: 'Europe/Paris', minute: 'numeric' }), 10);
 
-    // DEBUG : Affichage de l'heure perçue par le script
     console.log(`🕒 Heure évaluée (Paris) : ${hours}h${minutes < 10 ? '0' : ''}${minutes}`);
 
     const isScheduledReportHour = [8, 12, 14, 16, 20].includes(hours) && minutes <= 30;
