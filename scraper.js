@@ -6,14 +6,16 @@ const NTFY_TOPIC = 'cotten-rdv-veille';
 
 async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨", priority = "urgent", tags = "hospital,rotating_light") {
     try {
-        await axios.post(`https://ntfy.sh/${NTFY_TOPIC}`, message, {
+        const response = await axios.post(`https://ntfy.sh/${NTFY_TOPIC}`, message, {
             headers: { 
                 'Title': title, 
                 'Priority': priority, 
                 'Tags': tags 
             }
         });
-        console.log("✅ Alerte Ntfy envoyée avec succès !");
+        if (response.status === 200) {
+            console.log("✅ Alerte Ntfy envoyée avec succès !");
+        }
     } catch (error) {
         console.error("❌ Erreur lors de l'envoi de l'alerte Ntfy :", error.message);
     }
@@ -26,14 +28,18 @@ async function checkDoctolib() {
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled'
+            '--disable-blink-features=AutomationControlled',
+            '--window-size=1280,720'
         ] 
     });
 
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         viewport: { width: 1280, height: 720 },
-        locale: 'fr-FR'
+        locale: 'fr-FR',
+        extraHTTPHeaders: {
+            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7' // Renforce l'empreinte humaine
+        }
     });
 
     const page = await context.newPage();
@@ -42,6 +48,17 @@ async function checkDoctolib() {
     try {
         console.log(`🌐 Navigation vers : ${DOCTOLIB_URL}`);
         await page.goto(DOCTOLIB_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+        // 🛡️ Bouclier Anti-Bot : Vérification de la présence de Datadome / Cloudflare
+        const isBlocked = await page.evaluate(() => {
+            const text = document.body.innerText.toLowerCase();
+            return text.includes('prouver que vous êtes un humain') || text.includes('datadome') || text.includes('access denied');
+        }).catch(() => false);
+
+        if (isBlocked) {
+            console.warn("⚠️ Blocage anti-bot (Datadome/Cloudflare) détecté. Annulation du cycle pour éviter le ban IP.");
+            return; // On stoppe l'exécution ici pour ce cycle
+        }
 
         // Gestion des cookies
         try {
@@ -60,13 +77,7 @@ async function checkDoctolib() {
         await appointmentBtn.waitFor({ state: 'attached', timeout: 15000 });
 
         const isDisabled = await appointmentBtn.evaluate(el => {
-            if (el.classList.contains('Tappable-inactive')) {
-                return true;
-            }
-            if (el.hasAttribute('disabled')) {
-                return true;
-            }
-            return false;
+            return el.classList.contains('Tappable-inactive') || el.hasAttribute('disabled');
         });
 
         if (isDisabled) {
@@ -77,7 +88,7 @@ async function checkDoctolib() {
 
             await page.waitForTimeout(3000);
 
-            // Gestion de l'option nouveau patient si elle s'affiche
+            // Gestion de l'option nouveau patient
             try {
                 const newPatientOption = page.locator('text=Nouveau patient').first();
                 if (await newPatientOption.isVisible({ timeout: 4000 })) {
@@ -87,7 +98,7 @@ async function checkDoctolib() {
                 }
             } catch (e) {}
 
-            // Sélection du premier motif de consultation disponible
+            // Sélection du premier motif de consultation
             try {
                 const firstMotive = page.locator('.dl-consultation-motive-list-item, [data-test*="motive"]').first();
                 if (await firstMotive.isVisible({ timeout: 4000 })) {
@@ -97,9 +108,11 @@ async function checkDoctolib() {
                 }
             } catch (e) {}
 
-            // Vérification de la présence effective de créneaux ou du calendrier ouvert
+            // 🎯 Vérification robuste de la présence de créneaux (waitFor + catch)
             const calendarView = page.locator('.dl-calendar-day, .dl-availability-slot, [data-test*="slot"]').first();
-            const hasSlots = await calendarView.isVisible({ timeout: 6000 }).catch(() => false);
+            const hasSlots = await calendarView.waitFor({ state: 'visible', timeout: 6000 })
+                .then(() => true)
+                .catch(() => false);
 
             if (hasSlots) {
                 agendaOpen = true;
