@@ -27,4 +27,5 @@ jobs:
       - name: 🚀 Lancement du Scraper
         env:
           CRON_EXEC: ${{ github.event_name == 'schedule' }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: npm start
