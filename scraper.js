@@ -1,10 +1,21 @@
+try {
+    require('dotenv').config();
+} catch (e) {
+    // Ignoré silencieusement sur GitHub Actions
+}
+
 const { chromium } = require('playwright');
 const axios = require('axios');
 
 const DOCTOLIB_URL = 'https://www.doctolib.fr/dermatologue/val-de-briey/caroline-cotten';
-const NTFY_TOPIC = 'cotten-rdv-veille';
+const NTFY_TOPIC = process.env.NTFY_TOPIC; // ✅ Variable sécurisée via GitHub Secrets
 
 async function sendNtfyAlert(message, title = "🚨 ALERTE DOCTOLIB 🚨", priority = "urgent", tags = "hospital,rotating_light") {
+    if (!NTFY_TOPIC) {
+        console.log("⚠️ NTFY_TOPIC non défini ! Impossible d'envoyer la notification.");
+        return;
+    }
+
     try {
         const response = await axios.post(`https://ntfy.sh/${NTFY_TOPIC}`, message, {
             headers: { 
