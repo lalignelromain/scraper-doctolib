@@ -1,7 +1,7 @@
 {
   "name": "doctolib-scraper",
   "version": "1.0.0",
-  "description": "Scraper Doctolib Dr Cotten",
+  "description": "Scraper Doctolib Automatisé",
   "main": "scraper.js",
   "scripts": {
     "start": "node scraper.js",
