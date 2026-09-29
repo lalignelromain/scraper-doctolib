@@ -3,8 +3,8 @@ name: Doctolib Scraper & Heartbeat
 on:
   workflow_dispatch:
   schedule:
-    # Exécution toutes les 5 minutes (pour attraper l'heure pile de Paris pour le heartbeat)
-    - cron: '*/5 * * * *'
+    # Exécution toutes les 15 minutes (pour attraper l'heure pile de Paris pour le heartbeat)
+    - cron: '*/15 * * * *'
 
 jobs:
   run-scraper:
