@@ -153,7 +153,7 @@ async function checkDoctolib() {
 
     console.log(`🕒 Heure évaluée (Paris) : ${hours}h${minutes < 10 ? '0' : ''}${minutes}`);
 
-    const isScheduledReportHour = [8, 10, 12, 14, 16, 18, 20, 22].includes(hours) && minutes < 15;
+    const isScheduledReportHour = [8, 22].includes(hours) && minutes < 15;
     
     if (isScheduledReportHour && !agendaOpen) {
         console.log(`📡 Envoi du rapport de statut programmé de ${hours}h...`);
